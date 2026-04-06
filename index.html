@@ -500,7 +500,7 @@
     <section class="layout">
       <aside class="panel editor-panel" id="editorPanel">
         <h2>題目設定</h2>
-        <p>每行輸入一題，可用「國字｜注音」或「國字（注音）」格式。</p>
+        <p>每行輸入一題即可。系統會優先自動查詢注音，你也可以手動輸入「國字｜注音」或「國字（注音）」格式覆蓋它。</p>
         <label for="wordInput" class="note">圈詞內容</label>
         <textarea id="wordInput" placeholder="例如：
 小狗｜ㄒㄧㄠˇ ㄍㄡˇ
@@ -532,7 +532,7 @@
 
         <section class="dictionary-panel">
           <h2>本機注音字典</h2>
-          <p>每行一筆，格式是「詞語＝注音」。這裡是純離線使用的本機字典，加入後重新出題就會自動帶出注音。</p>
+          <p>每行一筆，格式是「詞語＝注音」。系統會先連網自動查注音；這裡的字典則用來補充或覆蓋特定詞語的讀音。</p>
           <label for="dictionaryInput" class="note">自訂字典內容</label>
           <textarea id="dictionaryInput" placeholder="例如：
 泰國＝ㄊㄞˋ ㄍㄨㄛˊ
@@ -543,7 +543,7 @@
             <button id="resetDictionaryBtn" class="ghost">還原預設字典</button>
           </div>
           <div class="helper-text" id="dictionaryStatus">尚未儲存自訂字典。</div>
-          <div class="helper-text">這個版本不依賴網路。只有字典中已有的詞語，才會自動帶出注音。</div>
+          <div class="helper-text">有網路時會先自動查注音；若連線失敗或遇到特殊詞語，會回退到這份字典。</div>
         </section>
       </aside>
 
@@ -616,6 +616,7 @@
     const wordGrid = document.getElementById("wordGrid");
     const modePill = document.getElementById("modePill");
     const editorPanel = document.getElementById("editorPanel");
+    const ZHCONVERT_API_URL = "https://api.zhconvert.org/convert";
     const DICTIONARY_STORAGE_KEY = "circle-word-zhuyin-dictionary";
     const defaultZhuyinDictionary = {
       "小玉": "ㄒㄧㄠˇ ㄩˋ",
@@ -749,6 +750,33 @@
       };
     }
 
+    async function fetchZhuyinBatch(words) {
+      const response = await fetch(ZHCONVERT_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+        },
+        body: new URLSearchParams({
+          converter: "Bopomofo",
+          text: words.join("\n"),
+          outputFormat: "json"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = await response.json();
+      if (!payload?.data?.text) {
+        throw new Error("No zhuyin result returned");
+      }
+
+      return payload.data.text
+        .split("\n")
+        .map((item) => item.trim());
+    }
+
     function shuffleWords(words) {
       const clone = [...words];
       for (let i = clone.length - 1; i > 0; i -= 1) {
@@ -858,7 +886,7 @@
       modePill.textContent = showAnswers ? "目前：答案模式" : "目前：測驗模式";
     }
 
-    function buildQuiz() {
+    async function buildQuiz() {
       const words = parseWords(wordInput.value);
 
       if (words.length === 0) {
@@ -871,16 +899,40 @@
         return;
       }
 
-      const normalizedWords = words.map(normalizeEntry);
-      shuffledWords = shuffleWords(normalizedWords);
-      showAnswers = false;
-      setEditorLocked(true);
-      updateMode();
-      renderWords();
-      const missingZhuyinCount = shuffledWords.filter((item) => !item.zhuyin).length;
-      statusText.textContent = missingZhuyinCount > 0
-        ? `已建立 ${shuffledWords.length} 題，並完成隨機排序。另有 ${missingZhuyinCount} 題不在本機字典中，請先補進字典。`
-        : `已建立 ${shuffledWords.length} 題，並完成隨機排序。`;
+      generateBtn.disabled = true;
+      lessonFiveBtn.disabled = true;
+      statusText.textContent = "正在自動查詢注音並整理題目...";
+
+      try {
+        const normalizedWords = words.map(normalizeEntry);
+        const wordsNeedingZhuyin = normalizedWords
+          .map((item, index) => ({ ...item, index }))
+          .filter((item) => !item.zhuyin);
+
+        if (wordsNeedingZhuyin.length > 0) {
+          try {
+            const fetchedZhuyinList = await fetchZhuyinBatch(wordsNeedingZhuyin.map((item) => item.word));
+            wordsNeedingZhuyin.forEach((item, orderIndex) => {
+              normalizedWords[item.index].zhuyin = fetchedZhuyinList[orderIndex] || "";
+            });
+          } catch (error) {
+            statusText.textContent = "自動注音連線失敗，先改用字典中的注音。";
+          }
+        }
+
+        shuffledWords = shuffleWords(normalizedWords);
+        showAnswers = false;
+        setEditorLocked(true);
+        updateMode();
+        renderWords();
+        const missingZhuyinCount = shuffledWords.filter((item) => !item.zhuyin).length;
+        statusText.textContent = missingZhuyinCount > 0
+          ? `已建立 ${shuffledWords.length} 題，並完成隨機排序。另有 ${missingZhuyinCount} 題仍未取得注音。`
+          : `已建立 ${shuffledWords.length} 題，並完成隨機排序。`;
+      } finally {
+        generateBtn.disabled = false;
+        lessonFiveBtn.disabled = false;
+      }
     }
 
     generateBtn.addEventListener("click", buildQuiz);
