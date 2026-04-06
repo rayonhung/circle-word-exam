@@ -197,8 +197,27 @@
       border-top: 1px solid rgba(161, 95, 33, 0.12);
     }
 
+    .storage-panel {
+      margin-top: 28px;
+      padding-top: 28px;
+      border-top: 1px solid rgba(161, 95, 33, 0.12);
+    }
+
     .dictionary-panel textarea {
       min-height: 150px;
+    }
+
+    .text-input {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 14px;
+      border: 2px solid rgba(217, 107, 43, 0.16);
+      border-radius: 18px;
+      padding: 12px 16px;
+      font: inherit;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.95);
+      outline: none;
     }
 
     .helper-text {
@@ -209,7 +228,8 @@
     }
 
     .editor-panel > p,
-    .dictionary-panel > p {
+    .dictionary-panel > p,
+    .storage-panel > p {
       margin: 0 0 18px;
     }
 
@@ -218,6 +238,42 @@
       margin-top: 18px;
       margin-bottom: 10px;
       font-weight: 700;
+    }
+
+    .saved-list,
+    .history-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .saved-item,
+    .history-item {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 248, 241, 0.92);
+      border: 1px solid rgba(217, 107, 43, 0.12);
+    }
+
+    .saved-item strong,
+    .history-item strong {
+      display: block;
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .saved-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .saved-actions button {
+      min-height: 42px;
+      padding: 10px 14px;
+      font-size: 0.95rem;
     }
 
     .board-header {
@@ -545,6 +601,20 @@
           <div class="helper-text" id="dictionaryStatus">尚未儲存自訂字典。</div>
           <div class="helper-text">有網路時會先自動查注音；若連線失敗或遇到特殊詞語，會回退到這份字典。</div>
         </section>
+
+        <section class="storage-panel">
+          <h2>課程與紀錄</h2>
+          <p>可把目前圈詞存成一課，也可以快速載入先前存過的課程。所有資料都會留在這台裝置的瀏覽器裡。</p>
+          <label for="lessonNameInput" class="note">課程名稱</label>
+          <input id="lessonNameInput" class="text-input" type="text" placeholder="例如：第六課圈詞">
+          <div class="controls">
+            <button id="saveLessonBtn" class="secondary">儲存目前課程</button>
+          </div>
+          <div class="helper-text" id="storageStatus">尚未儲存新的課程。</div>
+
+          <div class="saved-list" id="savedLessonsList"></div>
+          <div class="history-list" id="historyList"></div>
+        </section>
       </aside>
 
       <section class="panel">
@@ -609,6 +679,11 @@
     const cancelPasswordBtn = document.getElementById("cancelPasswordBtn");
     const confirmPasswordBtn = document.getElementById("confirmPasswordBtn");
     const statusText = document.getElementById("statusText");
+    const lessonNameInput = document.getElementById("lessonNameInput");
+    const saveLessonBtn = document.getElementById("saveLessonBtn");
+    const storageStatus = document.getElementById("storageStatus");
+    const savedLessonsList = document.getElementById("savedLessonsList");
+    const historyList = document.getElementById("historyList");
     const dictionaryInput = document.getElementById("dictionaryInput");
     const saveDictionaryBtn = document.getElementById("saveDictionaryBtn");
     const resetDictionaryBtn = document.getElementById("resetDictionaryBtn");
@@ -617,6 +692,8 @@
     const modePill = document.getElementById("modePill");
     const editorPanel = document.getElementById("editorPanel");
     const DICTIONARY_STORAGE_KEY = "circle-word-zhuyin-dictionary";
+    const LESSONS_STORAGE_KEY = "circle-word-saved-lessons";
+    const HISTORY_STORAGE_KEY = "circle-word-history";
     const defaultZhuyinDictionary = {
       "小玉": "ㄒㄧㄠˇ ㄩˋ",
       "繪者": "ㄏㄨㄟˋ ㄓㄜˇ",
@@ -654,6 +731,8 @@
     let shuffledWords = [];
     let showAnswers = false;
     let pendingPassword = "";
+    let savedLessons = [];
+    let historyRecords = [];
 
     function parseWords(rawText) {
       return rawText
@@ -719,6 +798,144 @@
       window.localStorage.removeItem(DICTIONARY_STORAGE_KEY);
       dictionaryInput.value = formatDictionaryText(zhuyinDictionary);
       dictionaryStatus.textContent = "已還原為預設字典。";
+    }
+
+    function formatDateTime(timestamp) {
+      return new Date(timestamp).toLocaleString("zh-TW", {
+        hour12: false
+      });
+    }
+
+    function loadStorageData() {
+      try {
+        savedLessons = JSON.parse(window.localStorage.getItem(LESSONS_STORAGE_KEY) || "[]");
+        if (!Array.isArray(savedLessons)) {
+          savedLessons = [];
+        }
+      } catch (error) {
+        savedLessons = [];
+      }
+
+      try {
+        historyRecords = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) || "[]");
+        if (!Array.isArray(historyRecords)) {
+          historyRecords = [];
+        }
+      } catch (error) {
+        historyRecords = [];
+      }
+    }
+
+    function persistLessons() {
+      window.localStorage.setItem(LESSONS_STORAGE_KEY, JSON.stringify(savedLessons));
+    }
+
+    function persistHistory() {
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(historyRecords));
+    }
+
+    function renderSavedLessons() {
+      if (savedLessons.length === 0) {
+        savedLessonsList.innerHTML = '<div class="helper-text">目前還沒有儲存的課程。</div>';
+        return;
+      }
+
+      savedLessonsList.innerHTML = savedLessons
+        .map((lesson) => `
+          <div class="saved-item">
+            <strong>${lesson.name}</strong>
+            <div class="helper-text">共 ${lesson.words.length} 題，更新時間：${formatDateTime(lesson.updatedAt)}</div>
+            <div class="saved-actions">
+              <button type="button" class="secondary" data-load-lesson="${lesson.id}">載入</button>
+              <button type="button" class="ghost" data-delete-lesson="${lesson.id}">刪除</button>
+            </div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function renderHistory() {
+      if (historyRecords.length === 0) {
+        historyList.innerHTML = '<div class="helper-text">目前還沒有考試歷史紀錄。</div>';
+        return;
+      }
+
+      historyList.innerHTML = `
+        <h2>最近考試紀錄</h2>
+        ${historyRecords.map((record) => `
+          <div class="history-item">
+            <strong>${record.label}</strong>
+            <div class="helper-text">${formatDateTime(record.createdAt)}．共 ${record.count} 題</div>
+          </div>
+        `).join("")}
+      `;
+    }
+
+    function recordHistory(words) {
+      const label = lessonNameInput.value.trim() || `未命名課程 ${historyRecords.length + 1}`;
+      historyRecords.unshift({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        label,
+        count: words.length,
+        createdAt: Date.now()
+      });
+      historyRecords = historyRecords.slice(0, 10);
+      persistHistory();
+      renderHistory();
+    }
+
+    function saveCurrentLesson() {
+      const words = parseWords(wordInput.value);
+      const lessonName = lessonNameInput.value.trim();
+
+      if (!lessonName) {
+        storageStatus.textContent = "請先輸入課程名稱。";
+        return;
+      }
+
+      if (words.length === 0) {
+        storageStatus.textContent = "請先輸入圈詞內容，再儲存課程。";
+        return;
+      }
+
+      const existingIndex = savedLessons.findIndex((lesson) => lesson.name === lessonName);
+      const lessonData = {
+        id: existingIndex >= 0 ? savedLessons[existingIndex].id : `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        name: lessonName,
+        words,
+        updatedAt: Date.now()
+      };
+
+      if (existingIndex >= 0) {
+        savedLessons[existingIndex] = lessonData;
+      } else {
+        savedLessons.unshift(lessonData);
+      }
+
+      savedLessons.sort((a, b) => b.updatedAt - a.updatedAt);
+      persistLessons();
+      renderSavedLessons();
+      storageStatus.textContent = `已儲存課程「${lessonName}」。`;
+    }
+
+    function loadLessonById(lessonId) {
+      const lesson = savedLessons.find((item) => item.id === lessonId);
+      if (!lesson) {
+        return;
+      }
+
+      lessonNameInput.value = lesson.name;
+      wordInput.value = lesson.words.join("\n");
+      setEditorLocked(false);
+      storageStatus.textContent = `已載入課程「${lesson.name}」。`;
+    }
+
+    function deleteLessonById(lessonId) {
+      const lesson = savedLessons.find((item) => item.id === lessonId);
+      savedLessons = savedLessons.filter((item) => item.id !== lessonId);
+      persistLessons();
+      renderSavedLessons();
+      storageStatus.textContent = lesson ? `已刪除課程「${lesson.name}」。` : "已刪除課程。";
     }
 
     function normalizeEntry(line) {
@@ -918,6 +1135,7 @@
         setEditorLocked(true);
         updateMode();
         renderWords();
+        recordHistory(normalizedWords);
         const missingZhuyinCount = shuffledWords.filter((item) => !item.zhuyin).length;
         statusText.textContent = missingZhuyinCount > 0
           ? `已建立 ${shuffledWords.length} 題，並完成隨機排序。另有 ${missingZhuyinCount} 題仍未取得注音。`
@@ -931,6 +1149,7 @@
     generateBtn.addEventListener("click", buildQuiz);
 
     lessonFiveBtn.addEventListener("click", () => {
+      lessonNameInput.value = "第五課圈詞";
       wordInput.value = lessonFiveWords.join("\n");
       buildQuiz();
     });
@@ -950,6 +1169,8 @@
       saveDictionary();
       statusText.textContent = "本機注音字典已更新，重新出題後會套用新的注音。";
     });
+
+    saveLessonBtn.addEventListener("click", saveCurrentLesson);
 
     resetDictionaryBtn.addEventListener("click", () => {
       resetDictionary();
@@ -1035,7 +1256,23 @@
       statusText.textContent = "密碼正確，已顯示全部答案順序與注音。";
     });
 
+    savedLessonsList.addEventListener("click", (event) => {
+      const loadButton = event.target.closest("[data-load-lesson]");
+      if (loadButton) {
+        loadLessonById(loadButton.dataset.loadLesson);
+        return;
+      }
+
+      const deleteButton = event.target.closest("[data-delete-lesson]");
+      if (deleteButton) {
+        deleteLessonById(deleteButton.dataset.deleteLesson);
+      }
+    });
+
+    loadStorageData();
     loadDictionary();
+    renderSavedLessons();
+    renderHistory();
     renderWords();
     setEditorLocked(false);
   </script>
