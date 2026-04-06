@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>圈詞考試</title>
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #fff8ef 0%, #ffe4c7 45%, #ffd2a8 100%);
+      --panel: rgba(255, 255, 255, 0.88);
+      --panel-border: rgba(161, 95, 33, 0.15);
+      --text: #4c2a12;
+      --subtle: #8a5b39;
+      --accent: #d96b2b;
+      --accent-deep: #a44918;
+      --accent-soft: #fff0e1;
+      --success: #256f4a;
+      --shadow: 0 20px 40px rgba(126, 64, 18, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 48px;
+    }
+
+    .hero {
+      padding: 24px 28px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.7), transparent 34%),
+        rgba(255, 245, 234, 0.72);
+      border: 1px solid rgba(163, 102, 48, 0.12);
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.3rem);
+      letter-spacing: 0.06em;
+    }
+
+    .hero p {
+      margin: 12px 0 0;
+      max-width: 650px;
+      font-size: 1.02rem;
+      line-height: 1.7;
+      color: var(--subtle);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 1.35rem;
+    }
+
+    .panel p,
+    .panel li,
+    .note,
+    .status {
+      color: var(--subtle);
+      line-height: 1.65;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 240px;
+      resize: vertical;
+      border: 2px solid rgba(217, 107, 43, 0.16);
+      border-radius: 18px;
+      padding: 16px;
+      font: inherit;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.95);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    textarea:focus {
+      border-color: rgba(217, 107, 43, 0.6);
+      box-shadow: 0 0 0 4px rgba(217, 107, 43, 0.12);
+    }
+
+    .controls,
+    .top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent) 0%, #f08d2e 100%);
+      box-shadow: 0 12px 20px rgba(217, 107, 43, 0.25);
+    }
+
+    .secondary {
+      color: var(--accent-deep);
+      background: var(--accent-soft);
+    }
+
+    .ghost {
+      color: var(--subtle);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(161, 95, 33, 0.12);
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 1.6em;
+      font-weight: 600;
+    }
+
+    .editor-panel.is-hidden textarea,
+    .editor-panel.is-hidden .note,
+    .editor-panel.is-hidden .tips {
+      display: none;
+    }
+
+    .editor-panel.is-hidden .editing-actions {
+      display: none;
+    }
+
+    .editor-panel.is-hidden .dictionary-panel {
+      display: none;
+    }
+
+    .locked-box {
+      display: none;
+      margin-top: 16px;
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 250, 245, 0.9);
+      border: 1px dashed rgba(161, 95, 33, 0.24);
+    }
+
+    .editor-panel.is-hidden .locked-box {
+      display: block;
+    }
+
+    .dictionary-panel {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(161, 95, 33, 0.12);
+    }
+
+    .dictionary-panel textarea {
+      min-height: 150px;
+    }
+
+    .helper-text {
+      margin-top: 10px;
+      font-size: 0.95rem;
+      color: var(--subtle);
+      line-height: 1.6;
+    }
+
+    .board-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .board-header p {
+      margin: 8px 0 0;
+    }
+
+    .mode-pill {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 240, 225, 0.95);
+      color: var(--accent-deep);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .word-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+    }
+
+    .word-card {
+      position: relative;
+      min-height: 148px;
+      padding: 18px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 247, 238, 0.95)),
+        #fff;
+      border: 1px solid rgba(217, 107, 43, 0.1);
+    }
+
+    .word-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -30px -44px auto;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 220, 188, 0.34);
+    }
+
+    .word-number {
+      display: inline-flex;
+      width: 34px;
+      height: 34px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-weight: 800;
+      background: rgba(255, 240, 225, 0.95);
+      color: var(--accent-deep);
+    }
+
+    .word-space {
+      position: relative;
+      z-index: 1;
+      margin-top: 18px;
+      border-bottom: 3px dashed rgba(138, 91, 57, 0.38);
+      min-height: 52px;
+    }
+
+    .answer-text {
+      position: relative;
+      z-index: 1;
+      margin-top: 18px;
+      min-height: 52px;
+    }
+
+    .answer-word {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--success);
+    }
+
+    .answer-zhuyin {
+      margin-top: 8px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent-deep);
+      letter-spacing: 0.05em;
+      white-space: pre-wrap;
+      line-height: 1.7;
+    }
+
+    .empty-state {
+      padding: 42px 20px;
+      text-align: center;
+      border-radius: 24px;
+      background: rgba(255, 250, 245, 0.78);
+      border: 1px dashed rgba(161, 95, 33, 0.2);
+      color: var(--subtle);
+    }
+
+    .tips {
+      margin: 18px 0 0;
+      padding-left: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .board-header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>圈詞考試</h1>
+      <p>輸入圈詞後一鍵隨機出題，小朋友可以先聽發音、再手寫作答。平常保持測驗模式不顯示答案，最後按「答案」再公布全部順序。</p>
+    </section>
+
+    <section class="layout">
+      <aside class="panel editor-panel" id="editorPanel">
+        <h2>題目設定</h2>
+        <p>每行輸入一題，可用「國字｜注音」或「國字（注音）」格式。</p>
+        <label for="wordInput" class="note">圈詞內容</label>
+        <textarea id="wordInput" placeholder="例如：
+小狗｜ㄒㄧㄠˇ ㄍㄡˇ
+上學（ㄕㄤˋ ㄒㄩㄝˊ）
+操場｜ㄘㄠ ㄔㄤˇ
+鉛筆盒（ㄑㄧㄢ ㄅㄧˇ ㄏㄜˊ）"></textarea>
+
+        <div class="controls editing-actions">
+          <button id="lessonFiveBtn" class="secondary">第五課圈詞</button>
+          <button id="generateBtn" class="primary">確定並隨機出題</button>
+          <button id="clearBtn" class="ghost">清空</button>
+        </div>
+
+        <div class="locked-box" id="lockedBox">
+          <strong>題目已鎖定</strong>
+          <p>左側內容已遮住，孩子可以自己操作右邊的朗讀與答案按鈕。</p>
+          <div class="controls">
+            <button id="editBtn" class="ghost">重新編輯題目</button>
+          </div>
+        </div>
+
+        <div class="status" id="statusText">尚未建立題目。</div>
+
+        <ul class="tips">
+          <li>按「朗讀」可念出該題圈詞。</li>
+          <li>題目區先不顯示答案，保留給小朋友作答。</li>
+          <li>按「答案」後會公開目前隨機排序結果與注音。</li>
+        </ul>
+
+        <section class="dictionary-panel">
+          <h2>本機注音字典</h2>
+          <p>每行一筆，格式是「詞語＝注音」。這裡是純離線使用的本機字典，加入後重新出題就會自動帶出注音。</p>
+          <label for="dictionaryInput" class="note">自訂字典內容</label>
+          <textarea id="dictionaryInput" placeholder="例如：
+泰國＝ㄊㄞˋ ㄍㄨㄛˊ
+咖啡＝ㄎㄚ ㄈㄟ
+水杯＝ㄕㄨㄟˇ ㄅㄟ"></textarea>
+          <div class="controls">
+            <button id="saveDictionaryBtn" class="secondary">儲存本機字典</button>
+            <button id="resetDictionaryBtn" class="ghost">還原預設字典</button>
+          </div>
+          <div class="helper-text" id="dictionaryStatus">尚未儲存自訂字典。</div>
+          <div class="helper-text">這個版本不依賴網路。只有字典中已有的詞語，才會自動帶出注音。</div>
+        </section>
+      </aside>
+
+      <section class="panel">
+        <div class="board-header">
+          <div>
+            <h2>測驗區</h2>
+            <p>朗讀後讓孩子在紙上或白板上寫出正確圈詞。</p>
+          </div>
+          <div class="mode-pill" id="modePill">目前：測驗模式</div>
+        </div>
+
+        <div class="top-actions">
+          <button id="reshuffleBtn" class="secondary">重新隨機排序</button>
+          <button id="answerBtn" class="primary">答案</button>
+          <button id="hideAnswerBtn" class="ghost">回到測驗模式</button>
+        </div>
+
+        <div id="wordGrid" class="word-grid" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const wordInput = document.getElementById("wordInput");
+    const generateBtn = document.getElementById("generateBtn");
+    const lessonFiveBtn = document.getElementById("lessonFiveBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const editBtn = document.getElementById("editBtn");
+    const reshuffleBtn = document.getElementById("reshuffleBtn");
+    const answerBtn = document.getElementById("answerBtn");
+    const hideAnswerBtn = document.getElementById("hideAnswerBtn");
+    const statusText = document.getElementById("statusText");
+    const dictionaryInput = document.getElementById("dictionaryInput");
+    const saveDictionaryBtn = document.getElementById("saveDictionaryBtn");
+    const resetDictionaryBtn = document.getElementById("resetDictionaryBtn");
+    const dictionaryStatus = document.getElementById("dictionaryStatus");
+    const wordGrid = document.getElementById("wordGrid");
+    const modePill = document.getElementById("modePill");
+    const editorPanel = document.getElementById("editorPanel");
+    const DICTIONARY_STORAGE_KEY = "circle-word-zhuyin-dictionary";
+    const defaultZhuyinDictionary = {
+      "小玉": "ㄒㄧㄠˇ ㄩˋ",
+      "繪者": "ㄏㄨㄟˋ ㄓㄜˇ",
+      "哭泣": "ㄎㄨ ㄑㄧˋ",
+      "三峽": "ㄙㄢ ㄒㄧㄚˊ",
+      "封面簡介": "ㄈㄥ ㄇㄧㄢˋ ㄐㄧㄢˇ ㄐㄧㄝˋ",
+      "出版書籍": "ㄔㄨ ㄅㄢˇ ㄕㄨ ㄐㄧˊ",
+      "小狗": "ㄒㄧㄠˇ ㄍㄡˇ",
+      "上學": "ㄕㄤˋ ㄒㄩㄝˊ",
+      "操場": "ㄘㄠ ㄔㄤˇ",
+      "鉛筆盒": "ㄑㄧㄢ ㄅㄧˇ ㄏㄜˊ",
+      "過敏發癢": "ㄍㄨㄛˋ ㄇㄧㄣˇ ㄈㄚ ㄧㄤˇ",
+      "麥芽糖": "ㄇㄞˋ ㄧㄚˊ ㄊㄤˊ",
+      "深淺": "ㄕㄣ ㄑㄧㄢˇ",
+      "查資料": "ㄔㄚˊ ㄗ ㄌㄧㄠˋ",
+      "發酵": "ㄈㄚ ㄒㄧㄠˋ",
+      "讚嘆": "ㄗㄢˋ ㄊㄢˋ"
+    };
+    const lessonFiveWords = [
+      "繪者",
+      "出版書籍",
+      "三峽",
+      "封面簡介",
+      "小玉",
+      "哭泣",
+      "過敏發癢",
+      "麥芽糖",
+      "深淺",
+      "查資料",
+      "發酵",
+      "讚嘆"
+    ];
+    let zhuyinDictionary = { ...defaultZhuyinDictionary };
+
+    let shuffledWords = [];
+    let showAnswers = false;
+
+    function parseWords(rawText) {
+      return rawText
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    }
+
+    function formatDictionaryText(dictionary) {
+      return Object.entries(dictionary)
+        .sort(([wordA], [wordB]) => wordA.localeCompare(wordB, "zh-Hant"))
+        .map(([word, zhuyin]) => `${word}＝${zhuyin}`)
+        .join("\n");
+    }
+
+    function parseDictionaryText(rawText) {
+      const lines = rawText
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      const entries = {};
+      for (const line of lines) {
+        const parts = line.split(/[=＝]/).map((item) => item.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          entries[parts[0]] = parts.slice(1).join(" ");
+        }
+      }
+      return entries;
+    }
+
+    function loadDictionary() {
+      try {
+        const savedDictionary = window.localStorage.getItem(DICTIONARY_STORAGE_KEY);
+        if (!savedDictionary) {
+          zhuyinDictionary = { ...defaultZhuyinDictionary };
+          dictionaryInput.value = formatDictionaryText(zhuyinDictionary);
+          dictionaryStatus.textContent = "目前使用預設字典。";
+          return;
+        }
+
+        const parsedDictionary = JSON.parse(savedDictionary);
+        zhuyinDictionary = { ...defaultZhuyinDictionary, ...parsedDictionary };
+        dictionaryInput.value = formatDictionaryText(zhuyinDictionary);
+        dictionaryStatus.textContent = "已載入本機自訂字典。";
+      } catch (error) {
+        zhuyinDictionary = { ...defaultZhuyinDictionary };
+        dictionaryInput.value = formatDictionaryText(zhuyinDictionary);
+        dictionaryStatus.textContent = "字典讀取失敗，已改用預設字典。";
+      }
+    }
+
+    function saveDictionary() {
+      const customDictionary = parseDictionaryText(dictionaryInput.value);
+      zhuyinDictionary = { ...defaultZhuyinDictionary, ...customDictionary };
+      window.localStorage.setItem(DICTIONARY_STORAGE_KEY, JSON.stringify(customDictionary));
+      dictionaryInput.value = formatDictionaryText(zhuyinDictionary);
+      dictionaryStatus.textContent = `已儲存本機字典，目前共有 ${Object.keys(zhuyinDictionary).length} 筆詞語。`;
+    }
+
+    function resetDictionary() {
+      zhuyinDictionary = { ...defaultZhuyinDictionary };
+      window.localStorage.removeItem(DICTIONARY_STORAGE_KEY);
+      dictionaryInput.value = formatDictionaryText(zhuyinDictionary);
+      dictionaryStatus.textContent = "已還原為預設字典。";
+    }
+
+    function normalizeEntry(line) {
+      const trimmedLine = line.replace(/^\d+\s*[.)、．]\s*/, "").trim();
+      const bracketMatch = trimmedLine.match(/^(.+?)[（(]\s*([^（）()]+)\s*[）)]$/);
+
+      if (bracketMatch) {
+        return {
+          word: bracketMatch[1].trim(),
+          zhuyin: bracketMatch[2].trim()
+        };
+      }
+
+      const parts = trimmedLine.split(/[|｜\t]+/).map((item) => item.trim()).filter(Boolean);
+      const cleanWord = (parts[0] || trimmedLine).trim();
+      const autoZhuyin = zhuyinDictionary[cleanWord] || "";
+
+      if (parts.length >= 2) {
+        return {
+          word: cleanWord,
+          zhuyin: parts.slice(1).join(" ").trim()
+        };
+      }
+
+      return {
+        word: cleanWord,
+        zhuyin: autoZhuyin
+      };
+    }
+
+    function shuffleWords(words) {
+      const clone = [...words];
+      for (let i = clone.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [clone[i], clone[j]] = [clone[j], clone[i]];
+      }
+      return clone;
+    }
+
+    function speakWord(item) {
+      if (!("speechSynthesis" in window)) {
+        statusText.textContent = "這台裝置不支援語音朗讀。";
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(item.word);
+      utterance.lang = "zh-TW";
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+      statusText.textContent = "正在朗讀這一題，請聽聲音後作答。";
+    }
+
+    function setEditorLocked(locked) {
+      editorPanel.classList.toggle("is-hidden", locked);
+    }
+
+    function renderWords() {
+      wordGrid.innerHTML = "";
+
+      if (shuffledWords.length === 0) {
+        wordGrid.innerHTML = '<div class="empty-state">請先在左側輸入圈詞，按下「確定並隨機出題」開始測驗。</div>';
+        return;
+      }
+
+      shuffledWords.forEach((item, index) => {
+        const card = document.createElement("article");
+        card.className = "word-card";
+
+        const number = document.createElement("div");
+        number.className = "word-number";
+        number.textContent = index + 1;
+
+        const speakBtn = document.createElement("button");
+        speakBtn.className = "secondary";
+        speakBtn.textContent = "朗讀";
+        speakBtn.type = "button";
+        speakBtn.addEventListener("click", () => speakWord(item));
+
+        const top = document.createElement("div");
+        top.style.position = "relative";
+        top.style.zIndex = "1";
+        top.style.display = "flex";
+        top.style.alignItems = "center";
+        top.style.justifyContent = "space-between";
+        top.append(number, speakBtn);
+
+        const content = document.createElement("div");
+        content.className = showAnswers ? "answer-text" : "word-space";
+
+        if (showAnswers) {
+          const answerWord = document.createElement("div");
+          answerWord.className = "answer-word";
+          answerWord.textContent = item.word;
+
+          const answerZhuyin = document.createElement("div");
+          answerZhuyin.className = "answer-zhuyin";
+          answerZhuyin.textContent = item.zhuyin || "注音未提供";
+          content.append(answerWord, answerZhuyin);
+        }
+
+        card.append(top, content);
+        wordGrid.appendChild(card);
+      });
+    }
+
+    function updateMode() {
+      modePill.textContent = showAnswers ? "目前：答案模式" : "目前：測驗模式";
+    }
+
+    function buildQuiz() {
+      const words = parseWords(wordInput.value);
+
+      if (words.length === 0) {
+        shuffledWords = [];
+        showAnswers = false;
+        setEditorLocked(false);
+        updateMode();
+        renderWords();
+        statusText.textContent = "請先輸入至少一個圈詞。";
+        return;
+      }
+
+      const normalizedWords = words.map(normalizeEntry);
+      shuffledWords = shuffleWords(normalizedWords);
+      showAnswers = false;
+      setEditorLocked(true);
+      updateMode();
+      renderWords();
+      const missingZhuyinCount = shuffledWords.filter((item) => !item.zhuyin).length;
+      statusText.textContent = missingZhuyinCount > 0
+        ? `已建立 ${shuffledWords.length} 題，並完成隨機排序。另有 ${missingZhuyinCount} 題不在本機字典中，請先補進字典。`
+        : `已建立 ${shuffledWords.length} 題，並完成隨機排序。`;
+    }
+
+    generateBtn.addEventListener("click", buildQuiz);
+
+    lessonFiveBtn.addEventListener("click", () => {
+      wordInput.value = lessonFiveWords.join("\n");
+      buildQuiz();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      wordInput.value = "";
+      shuffledWords = [];
+      showAnswers = false;
+      setEditorLocked(false);
+      updateMode();
+      renderWords();
+      statusText.textContent = "已清空所有圈詞。";
+      window.speechSynthesis?.cancel();
+    });
+
+    saveDictionaryBtn.addEventListener("click", () => {
+      saveDictionary();
+      statusText.textContent = "本機注音字典已更新，重新出題後會套用新的注音。";
+    });
+
+    resetDictionaryBtn.addEventListener("click", () => {
+      resetDictionary();
+      statusText.textContent = "已還原預設字典，重新出題後會套用。";
+    });
+
+    editBtn.addEventListener("click", () => {
+      setEditorLocked(false);
+      statusText.textContent = "已解除鎖定，可以重新編輯圈詞與注音。";
+    });
+
+    reshuffleBtn.addEventListener("click", () => {
+      if (shuffledWords.length === 0) {
+        statusText.textContent = "還沒有題目可以重新排序。";
+        return;
+      }
+
+      shuffledWords = shuffleWords(shuffledWords);
+      showAnswers = false;
+      updateMode();
+      renderWords();
+      statusText.textContent = "已重新隨機排序，並回到測驗模式。";
+    });
+
+    answerBtn.addEventListener("click", () => {
+      if (shuffledWords.length === 0) {
+        statusText.textContent = "請先建立題目後再查看答案。";
+        return;
+      }
+
+      const password = window.prompt("請輸入答案密碼");
+      if (password === null) {
+        statusText.textContent = "已取消查看答案。";
+        return;
+      }
+
+      if (password !== "1234") {
+        statusText.textContent = "密碼錯誤，無法顯示答案。";
+        return;
+      }
+
+      showAnswers = true;
+      updateMode();
+      renderWords();
+      statusText.textContent = "密碼正確，已顯示全部答案順序與注音。";
+    });
+
+    hideAnswerBtn.addEventListener("click", () => {
+      if (shuffledWords.length === 0) {
+        statusText.textContent = "目前沒有題目。";
+        return;
+      }
+
+      showAnswers = false;
+      updateMode();
+      renderWords();
+      statusText.textContent = "已切回測驗模式。";
+    });
+
+    loadDictionary();
+    renderWords();
+    setEditorLocked(false);
+  </script>
+</body>
+</html>
