@@ -77,7 +77,7 @@
     }
 
     .panel h2 {
-      margin: 0 0 10px;
+      margin: 0 0 18px;
       font-size: 1.35rem;
     }
 
@@ -92,6 +92,7 @@
     textarea {
       width: 100%;
       min-height: 240px;
+      margin-top: 14px;
       resize: vertical;
       border: 2px solid rgba(217, 107, 43, 0.16);
       border-radius: 18px;
@@ -187,8 +188,8 @@
     }
 
     .dictionary-panel {
-      margin-top: 20px;
-      padding-top: 20px;
+      margin-top: 28px;
+      padding-top: 28px;
       border-top: 1px solid rgba(161, 95, 33, 0.12);
     }
 
@@ -201,6 +202,18 @@
       font-size: 0.95rem;
       color: var(--subtle);
       line-height: 1.6;
+    }
+
+    .editor-panel > p,
+    .dictionary-panel > p {
+      margin: 0 0 18px;
+    }
+
+    .note {
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 10px;
+      font-weight: 700;
     }
 
     .board-header {
@@ -403,6 +416,15 @@
 
       .panel {
         padding: 20px;
+      }
+
+      .panel h2 {
+        margin-bottom: 22px;
+      }
+
+      .note {
+        margin-top: 22px;
+        margin-bottom: 12px;
       }
 
       .top-actions,
