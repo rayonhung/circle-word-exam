@@ -616,7 +616,6 @@
     const wordGrid = document.getElementById("wordGrid");
     const modePill = document.getElementById("modePill");
     const editorPanel = document.getElementById("editorPanel");
-    const ZHCONVERT_API_URL = "https://api.zhconvert.org/convert";
     const DICTIONARY_STORAGE_KEY = "circle-word-zhuyin-dictionary";
     const defaultZhuyinDictionary = {
       "小玉": "ㄒㄧㄠˇ ㄩˋ",
@@ -751,16 +750,12 @@
     }
 
     async function fetchZhuyinBatch(words) {
-      const response = await fetch(ZHCONVERT_API_URL, {
+      const response = await fetch("/api/zhuyin", {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+          "Content-Type": "application/json"
         },
-        body: new URLSearchParams({
-          converter: "Bopomofo",
-          text: words.join("\n"),
-          outputFormat: "json"
-        })
+        body: JSON.stringify({ words })
       });
 
       if (!response.ok) {
@@ -768,13 +763,11 @@
       }
 
       const payload = await response.json();
-      if (!payload?.data?.text) {
+      if (!Array.isArray(payload?.zhuyin)) {
         throw new Error("No zhuyin result returned");
       }
 
-      return payload.data.text
-        .split("\n")
-        .map((item) => item.trim());
+      return payload.zhuyin;
     }
 
     function shuffleWords(words) {
